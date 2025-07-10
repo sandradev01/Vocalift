@@ -1,62 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Noise Cleaner App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 20px;
-            text-align: center;
-            background: #f9f9f9;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #3e3e3e;
-        }
-        input[type="file"] {
-            padding: 10px;
-            margin-top: 20px;
-        }
-        button {
-            margin-top: 20px;
-            padding: 10px 30px;
-            font-size: 16px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        #loading {
-            display: none;
-            margin-top: 20px;
-            font-weight: bold;
-            color: #888;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocalift - Background Noise Remover</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>🎧 Noise Cleaner App</h1>
-    <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".wav" required />
-        <br>
-        <button type="submit">Upload & Clean</button>
-    </form>
-    <div id="loading">⏳ Cleaning audio, please wait...</div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-wave-square"></i>
+                <h1>Vocalift</h1>
+            </div>
+            <p class="tagline">Remove background noise from your audio files with AI</p>
+        </header>
 
-    <script>
-        const form = document.getElementById('uploadForm');
-        const loading = document.getElementById('loading');
+        <main>
+            <div class="upload-container">
+                <div class="upload-box" id="uploadBox">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Drag & Drop Audio File</h3>
+                    <p>or</p>
+                    <button class="btn" id="browseBtn">Browse Files</button>
+                    <input type="file" id="fileInput" accept="audio/*" style="display: none;">
+                </div>
 
-        form.addEventListener('submit', () => {
-            loading.style.display = 'block';
-        });
-    </script>
+                <div class="or-divider">
+                    <span>OR</span>
+                </div>
+
+                <div class="record-container">
+                    <button class="btn record-btn" id="recordBtn">
+                        <i class="fas fa-microphone"></i>
+                        <span>Record Audio</span>
+                    </button>
+                    <div class="recording-indicator hidden" id="recordingIndicator">
+                        <div class="pulse"></div>
+                        <span>Recording...</span>
+                        <button class="btn stop-btn" id="stopBtn">Stop</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls hidden" id="controls">
+                <div class="slider-container">
+                    <label for="noiseReduction">Noise Reduction Strength</label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="noiseReduction" min="0" max="100" value="70">
+                        <span id="sliderValue">70%</span>
+                    </div>
+                </div>
+                <button class="btn process-btn" id="processBtn">
+                    <span>Process Audio</span>
+                    <i class="fas fa-magic"></i>
+                </button>
+            </div>
+
+            <div class="progress-container hidden" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress" id="progressBar"></div>
+                </div>
+                <p class="status-text" id="statusText">Processing your audio...</p>
+            </div>
+
+            <div class="results hidden" id="results">
+                <div class="audio-player">
+                    <h3>Original</h3>
+                    <audio controls id="originalAudio"></audio>
+                </div>
+                <div class="audio-player">
+                    <h3>Cleaned</h3>
+                    <audio controls id="cleanedAudio"></audio>
+                    <button class="btn download-btn" id="downloadBtn">
+                        <i class="fas fa-download"></i>
+                        Download
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
