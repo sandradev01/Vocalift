@@ -81,25 +81,26 @@ def process_audio():
         logger.info("Processing audio")
         
         # Load the audio
+        # Load the audio
         audio, sample_rate = torchaudio.load(wav_path)
-        
+
+        # Ensure mono shape [1, num_samples]
+        if audio.dim() == 1:
+            audio = audio.unsqueeze(0)
+        elif audio.size(0) > 1:
+            audio = torch.mean(audio, dim=0, keepdim=True)
+
         # Process with DeepFilterNet
         with torch.no_grad():
-            # Ensure audio is mono and in the correct shape
-            if audio.dim() > 1 and audio.size(0) > 1:
-                audio = torch.mean(audio, dim=0, keepdim=True)
-            
-            # Process the audio with DeepFilterNet
-            # Note: DeepFilterNet's enhance() doesn't take a strength parameter
-            enhanced_audio = enhance(model, df_state, audio.squeeze(0))
-            
-            # If you want to implement strength control, we can mix the original and enhanced audio
-            # Here's how we could do it (commented out since it's not part of the original DeepFilterNet API):
+            enhanced_audio = enhance(model, df_state, audio)
+
+            # Optionally implement strength blending:
             # enhanced_audio = (1 - strength) * audio + strength * enhanced_audio
-            
+
             # Ensure proper shape for saving
             if enhanced_audio.dim() == 1:
                 enhanced_audio = enhanced_audio.unsqueeze(0)
+
             
             # Create an in-memory file
             output = io.BytesIO()
