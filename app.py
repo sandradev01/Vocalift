@@ -67,10 +67,6 @@ def process_audio():
     
     temp_path = None
     try:
-        # Get noise reduction strength (0.0 to 1.0)
-        strength = float(request.form.get('strength', 0.7))
-        strength = max(0.0, min(1.0, strength))  # Clamp between 0 and 1
-        
         # Save the uploaded file temporarily
         temp_dir = tempfile.mkdtemp()
         temp_path = os.path.join(temp_dir, secure_filename(file.filename))
@@ -82,7 +78,7 @@ def process_audio():
             return jsonify({'error': 'Failed to process audio file'}), 500
         
         # Process the audio with DeepFilterNet
-        logger.info(f"Processing audio with strength: {strength}")
+        logger.info("Processing audio")
         
         # Load the audio
         audio, sample_rate = torchaudio.load(wav_path)
@@ -93,8 +89,13 @@ def process_audio():
             if audio.dim() > 1 and audio.size(0) > 1:
                 audio = torch.mean(audio, dim=0, keepdim=True)
             
-            # Process the audio
-            enhanced_audio = enhance(model, df_state, audio.squeeze(0), strength=strength)
+            # Process the audio with DeepFilterNet
+            # Note: DeepFilterNet's enhance() doesn't take a strength parameter
+            enhanced_audio = enhance(model, df_state, audio.squeeze(0))
+            
+            # If you want to implement strength control, we can mix the original and enhanced audio
+            # Here's how we could do it (commented out since it's not part of the original DeepFilterNet API):
+            # enhanced_audio = (1 - strength) * audio + strength * enhanced_audio
             
             # Ensure proper shape for saving
             if enhanced_audio.dim() == 1:

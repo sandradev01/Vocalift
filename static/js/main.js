@@ -6,8 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const recordBtn = document.getElementById('recordBtn');
     const stopBtn = document.getElementById('stopBtn');
     const recordingIndicator = document.getElementById('recordingIndicator');
-    const noiseReduction = document.getElementById('noiseReduction');
-    const sliderValue = document.getElementById('sliderValue');
     const processBtn = document.getElementById('processBtn');
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
@@ -36,12 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', handleFileSelect);
     recordBtn.addEventListener('click', startRecording);
     stopBtn.addEventListener('click', stopRecording);
-    noiseReduction.addEventListener('input', updateSliderValue);
     processBtn.addEventListener('click', processAudio);
     downloadBtn.addEventListener('click', downloadAudio);
 
     // Initialize
-    updateSliderValue();
 
     // Functions
     function handleDragOver(e) {
@@ -85,7 +81,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         audioFile = file;
         audioUrl = URL.createObjectURL(file);
-        originalAudio.src = audioUrl;
+        
+        // Show the audio player
+        const audioContainer = document.createElement('div');
+        audioContainer.className = 'audio-preview';
+        audioContainer.innerHTML = `
+            <h3>Original Audio</h3>
+            <audio controls>
+                <source src="${audioUrl}" type="${file.type}">
+                Your browser does not support the audio element.
+            </audio>
+        `;
+        
+        // Remove any existing preview
+        const existingPreview = document.querySelector('.audio-preview');
+        if (existingPreview) {
+            existingPreview.remove();
+        }
+        
+        // Insert after the upload box
+        uploadBox.parentNode.insertBefore(audioContainer, uploadBox.nextSibling);
+        
+        // Show controls
         showControls();
     }
 
@@ -127,10 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateSliderValue() {
-        sliderValue.textContent = `${noiseReduction.value}%`;
-    }
-
     async function processAudio() {
         if (!audioFile) {
             showError('Please upload or record an audio file first');
@@ -139,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formData = new FormData();
         formData.append('audio', audioFile);
-        formData.append('strength', noiseReduction.value / 100);
 
         try {
             // Show progress
@@ -154,29 +166,46 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                throw new Error(`Server responded with status: ${response.status}`);
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Server error: ${response.status}`);
             }
 
             updateProgress(50, 'Processing audio with DeepFilterNet...');
 
-            // Handle the response (assuming it's the processed audio file)
+            // Get the processed audio as a blob
             const blob = await response.blob();
+            
+            // Create a URL for the processed audio
             const processedUrl = URL.createObjectURL(blob);
-            cleanedAudio.src = processedUrl;
-
+            
+            // Update the audio player with the processed audio
+            cleanedAudio.innerHTML = ''; // Clear any existing sources
+            const source = document.createElement('source');
+            source.src = processedUrl;
+            source.type = 'audio/wav';
+            cleanedAudio.appendChild(source);
+            
+            // Force update the audio element
+            cleanedAudio.load();
+            
             // Save the blob for download
             window.processedBlob = blob;
 
             updateProgress(100, 'Processing complete!');
+            
+            // Show the results
             setTimeout(() => {
                 progressContainer.classList.add('hidden');
                 results.classList.remove('hidden');
                 results.classList.add('fade-in');
+                
+                // Scroll to results
+                results.scrollIntoView({ behavior: 'smooth' });
             }, 500);
 
         } catch (error) {
             console.error('Error processing audio:', error);
-            showError('An error occurred while processing the audio. Please try again.');
+            showError(`Error: ${error.message || 'Failed to process audio'}`);
             progressContainer.classList.add('hidden');
             controls.classList.remove('hidden');
         }

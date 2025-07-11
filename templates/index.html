@@ -46,17 +46,12 @@
             </div>
 
             <div class="controls hidden" id="controls">
-                <div class="slider-container">
-                    <label for="noiseReduction">Noise Reduction Strength</label>
-                    <div class="slider-wrapper">
-                        <input type="range" id="noiseReduction" min="0" max="100" value="70">
-                        <span id="sliderValue">70%</span>
-                    </div>
+                <div class="process-container">
+                    <button class="btn process-btn" id="processBtn">
+                        <span>Process Audio</span>
+                        <i class="fas fa-magic"></i>
+                    </button>
                 </div>
-                <button class="btn process-btn" id="processBtn">
-                    <span>Process Audio</span>
-                    <i class="fas fa-magic"></i>
-                </button>
             </div>
 
             <div class="progress-container hidden" id="progressContainer">
