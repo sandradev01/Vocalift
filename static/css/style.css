@@ -168,6 +168,34 @@ h1 {
     background-color: #0d9c6b;
 }
 
+/* Delete Button */
+.delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin-top: 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid #fecaca;
+    background-color: #fef2f2;
+    color: #dc2626;
+    font-size: 0.9rem;
+}
+
+.delete-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.delete-btn:active {
+    transform: translateY(1px);
+}
+
 /* Divider */
 .or-divider {
     display: flex;
