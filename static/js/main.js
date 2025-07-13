@@ -22,22 +22,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let audioBlob = null;
     let audioUrl = null;
     let audioFile = null;
+    let currentPreview = null;
 
     // Event Listeners
-    uploadBox.addEventListener('click', () => fileInput.click());
+    uploadBox.addEventListener('click', () => {
+        if (!audioFile) fileInput.click();
+    });
     uploadBox.addEventListener('dragover', handleDragOver);
+    uploadBox.addEventListener('dragleave', handleDragLeave);
     uploadBox.addEventListener('drop', handleDrop);
     browseBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        fileInput.click();
+        if (!audioFile) fileInput.click();
     });
     fileInput.addEventListener('change', handleFileSelect);
     recordBtn.addEventListener('click', startRecording);
     stopBtn.addEventListener('click', stopRecording);
     processBtn.addEventListener('click', processAudio);
     downloadBtn.addEventListener('click', downloadAudio);
-
-    // Initialize
 
     // Functions
     function handleDragOver(e) {
@@ -59,7 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         uploadBox.style.borderColor = '';
         uploadBox.style.backgroundColor = '';
-        
+
+        if (audioFile) {
+            showError('Please delete the current audio before uploading a new one.');
+            return;
+        }
+
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             handleAudioFile(files[0]);
@@ -67,6 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleFileSelect(e) {
+        if (audioFile) {
+            showError('Please delete the current audio before uploading a new one.');
+            return;
+        }
+
         const file = e.target.files[0];
         if (file) {
             handleAudioFile(file);
@@ -81,35 +93,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
         audioFile = file;
         audioUrl = URL.createObjectURL(file);
-        
-        // Show the audio player
+        showAudioPreview(audioUrl, file.type);
+    }
+
+    function showAudioPreview(url, type) {
+        if (currentPreview) {
+            currentPreview.remove();
+        }
+
         const audioContainer = document.createElement('div');
         audioContainer.className = 'audio-preview';
         audioContainer.innerHTML = `
             <h3>Original Audio</h3>
             <audio controls>
-                <source src="${audioUrl}" type="${file.type}">
+                <source src="${url}" type="${type}">
                 Your browser does not support the audio element.
             </audio>
+            <button id="deleteAudio" class="delete-btn">Delete</button>
         `;
-        
-        // Remove any existing preview
-        const existingPreview = document.querySelector('.audio-preview');
-        if (existingPreview) {
-            existingPreview.remove();
-        }
-        
-        // Insert after the upload box
+
         uploadBox.parentNode.insertBefore(audioContainer, uploadBox.nextSibling);
-        
-        // Show controls
+        currentPreview = audioContainer;
+
+        document.getElementById('deleteAudio').addEventListener('click', deleteAudio);
+
         showControls();
     }
 
+    function deleteAudio() {
+        if (currentPreview) {
+            currentPreview.remove();
+            currentPreview = null;
+        }
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+            audioUrl = null;
+        }
+        audioFile = null;
+        audioBlob = null;
+        results.classList.add('hidden');
+        controls.classList.add('hidden');
+        fileInput.value = '';
+    }
+
     async function startRecording() {
+        if (audioFile) {
+            showError('Please delete the current audio before starting a new recording.');
+            return;
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(stream);
+            // Prefer WAV recording if the browser supports it (Safari, some Chrome builds)
+            const wavMime = 'audio/wav';
+            const options = MediaRecorder.isTypeSupported(wavMime) ? { mimeType: wavMime } : {};
+            mediaRecorder = new MediaRecorder(stream, options);
             audioChunks = [];
 
             mediaRecorder.ondataavailable = (event) => {
@@ -119,11 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             mediaRecorder.onstop = () => {
-                audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                // Use the type from the incoming chunks – this is often audio/webm or audio/ogg
+                const mimeType = mediaRecorder.mimeType || audioChunks[0]?.type || 'audio/webm';
+                audioBlob = new Blob(audioChunks, { type: mimeType });
                 audioUrl = URL.createObjectURL(audioBlob);
-                originalAudio.src = audioUrl;
-                audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
-                showControls();
+                // Determine appropriate extension from mimeType
+                const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'wav';
+                audioFile = new File([audioBlob], `recording.${ext}`, { type: mimeType });
+
+                showAudioPreview(audioUrl, 'audio/wav');
             };
 
             mediaRecorder.start();
@@ -151,13 +192,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const formData = new FormData();
-        formData.append('audio', audioFile);
+        formData.append('audio', audioFile, audioFile.name || 'recording.wav');
 
         try {
-            // Show progress
+            // Show loading state
             progressContainer.classList.remove('hidden');
             controls.classList.add('hidden');
             results.classList.add('hidden');
+            cleanedAudio.innerHTML = '';
+            
             updateProgress(10, 'Uploading audio...');
 
             const response = await fetch('/process', {
@@ -166,41 +209,47 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `Server error: ${response.status}`);
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.error || 'Failed to process audio');
             }
 
-            updateProgress(50, 'Processing audio with DeepFilterNet...');
-
+            updateProgress(50, 'Processing audio...');
+            
             // Get the processed audio as a blob
             const blob = await response.blob();
-            
-            // Create a URL for the processed audio
             const processedUrl = URL.createObjectURL(blob);
-            
-            // Update the audio player with the processed audio
-            cleanedAudio.innerHTML = ''; // Clear any existing sources
-            const source = document.createElement('source');
-            source.src = processedUrl;
-            source.type = 'audio/wav';
-            cleanedAudio.appendChild(source);
-            
-            // Force update the audio element
-            cleanedAudio.load();
-            
-            // Save the blob for download
+
+            // ==== Populate cleaned audio ====
+            // cleanedAudio is an <audio> tag already in the DOM
+            cleanedAudio.innerHTML = '';
+            const cleanedSrc = document.createElement('source');
+            cleanedSrc.src = processedUrl;
+            cleanedSrc.type = 'audio/wav';
+            cleanedAudio.appendChild(cleanedSrc);
+
+            // ==== Populate original audio (for side-by-side comparison) ====
+            if (audioUrl) {
+                originalAudio.innerHTML = '';
+                const origSrc = document.createElement('source');
+                origSrc.src = audioUrl; // global preview URL
+                origSrc.type = audioFile?.type || 'audio/wav';
+                originalAudio.appendChild(origSrc);
+            }
+
+            // Store for download
             window.processedBlob = blob;
+            window.processedUrl = processedUrl;
 
             updateProgress(100, 'Processing complete!');
             
-            // Show the results
+            // Show results
             setTimeout(() => {
                 progressContainer.classList.add('hidden');
                 results.classList.remove('hidden');
-                results.classList.add('fade-in');
-                
-                // Scroll to results
+                controls.classList.remove('hidden');
                 results.scrollIntoView({ behavior: 'smooth' });
+                
+
             }, 500);
 
         } catch (error) {
@@ -216,15 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showError('No processed audio available to download');
             return;
         }
-
-        const url = URL.createObjectURL(window.processedBlob);
+        
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `cleaned_${new Date().getTime()}.wav`;
+        a.href = window.processedUrl || URL.createObjectURL(window.processedBlob);
+        a.download = `cleaned_${audioFile?.name?.replace(/\.[^/.]+$/, '') || 'recording'}.wav`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
     }
 
     function showControls() {
@@ -238,18 +285,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showError(message) {
-        // You can implement a more sophisticated error display
         alert(message);
     }
 
-    // Handle window unload
     window.addEventListener('beforeunload', () => {
-        // Clean up
-        if (audioUrl) {
-            URL.revokeObjectURL(audioUrl);
-        }
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
+        // Clean up object URLs
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        if (window.processedUrl) URL.revokeObjectURL(window.processedUrl);
+        
+        // Stop any active recording
+        if (mediaRecorder?.state !== 'inactive') {
+            mediaRecorder?.stop();
+            mediaRecorder?.stream?.getTracks()?.forEach(track => track.stop());
         }
     });
 });

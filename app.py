@@ -24,30 +24,53 @@ model, df_state, _ = init_df()
 logger.info("DeepFilterNet model initialized")
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'wav', 'mp3', 'ogg', 'flac', 'm4a'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'wav', 'mp3', 'ogg', 'flac', 'm4a', 'webm'}
 
 def convert_to_wav(input_path, output_path):
-    """Convert any audio file to WAV format"""
+    """Ensure the provided audio is in 48 kHz mono WAV format.
+
+    If the input is already a standard WAV file we simply copy it. Otherwise we
+    load with torchaudio, convert to mono / 48 kHz and save as WAV.
+    Returns True on success, False on failure.
+    """
+    import shutil
     try:
-        # Load the audio file
+        # Short-circuit for regular WAV inputs – this avoids issues with some
+        # recorder-generated WAV sub-formats that torchaudio may not parse.
+        if os.path.splitext(input_path)[1].lower() == '.wav':
+            shutil.copyfile(input_path, output_path)
+            return True
+
+        # Fallback: use torchaudio for conversion of non-WAV sources
         audio, sample_rate = torchaudio.load(input_path)
-        
-        # Convert to mono if needed
+
+        # Convert to mono if multi-channel
         if audio.dim() > 1 and audio.size(0) > 1:
             audio = torch.mean(audio, dim=0, keepdim=True)
-        
-        # Resample to 48kHz if needed
+
+        # Resample to 48 kHz if necessary
         if sample_rate != 48000:
             resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=48000)
             audio = resampler(audio)
             sample_rate = 48000
-        
-        # Save as WAV
+
+        # Save the WAV
         torchaudio.save(output_path, audio, sample_rate)
         return True
     except Exception as e:
-        logger.error(f"Error converting audio to WAV: {str(e)}")
-        return False
+        logger.error(f"Error converting audio to WAV: {str(e)}", exc_info=True)
+        # If torchaudio failed, try using ffmpeg as a fallback to convert the
+        # file to the desired mono/48 kHz WAV. This gracefully handles WebM and
+        # other browser-recorded formats that torchaudio cannot decode.
+        try:
+            import subprocess, shlex
+            cmd = f"ffmpeg -y -i {shlex.quote(input_path)} -ac 1 -ar 48000 {shlex.quote(output_path)}"
+            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            logger.info("Converted using ffmpeg fallback")
+            return True
+        except Exception as ff:
+            logger.error(f"ffmpeg fallback failed: {ff}")
+            return False
 
 @app.route('/')
 def index():
@@ -140,4 +163,5 @@ def process_audio():
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5001)
+
