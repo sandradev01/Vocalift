@@ -6,4 +6,4 @@ numpy==1.24.3
 soundfile==0.12.1
 gunicorn>=20.1.0
 # DeepFilterNet is not on PyPI, install directly from GitHub:
-git+https://github.com/Rikorose/DeepFilterNet.git@v0.4.0#egg=DeepFilterNet&subdirectory=pyDF
+git+https://github.com/Rikorose/DeepFilterNet.git@v0.4.0#egg=DeepFilterNet
