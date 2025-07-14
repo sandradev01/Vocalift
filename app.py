@@ -8,7 +8,8 @@ from werkzeug.utils import secure_filename
 import tempfile
 import soundfile as sf
 import logging
-from df.enhance import enhance, init_df
+from deepfilternet.df.enhance import enhance, init_df
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
