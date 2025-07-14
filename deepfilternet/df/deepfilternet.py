@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 import torch
 from torch import Tensor, nn
 
-from df.config import DfParams, config
-from df.modules import DfOp, GroupedGRU, GroupedLinear, Mask, convkxf, erb_fb, get_device
+from .config import DfParams, config
+from .modules import DfOp, GroupedGRU, GroupedLinear, Mask, convkxf, erb_fb, get_device
 from libdf import DF
 
 

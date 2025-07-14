@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from df.utils import as_complex
+from .utils import as_complex
 
 
 def spec_figure(

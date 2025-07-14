@@ -26,3 +26,4 @@ pycparser==2.22
 typing_extensions==4.14.0
 appdirs==1.4.4
 sympy==1.14.0
+-e ./deepfilternet

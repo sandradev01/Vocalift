@@ -3,7 +3,7 @@ from importlib import import_module
 import torch
 from loguru import logger
 
-from df.config import DfParams, config
+from .config import DfParams, config
 
 
 class ModelParams(DfParams):

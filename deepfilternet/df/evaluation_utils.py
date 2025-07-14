@@ -19,13 +19,13 @@ from torch.multiprocessing.pool import Pool
 from torchaudio.functional import highpass_biquad
 from torchaudio.transforms import Resample
 
-from df.enhance import df_features
-from df.io import get_resample_params, load_audio, resample, save_audio
-from df.model import ModelParams
-from df.scripts import dnsmos_dns5 as dnsmos5
-from df.scripts.dnsmos import dnsmos_api_req, dnsmos_local, download_onnx_models
-from df.sepm import composite as composite_py
-from df.utils import as_complex, get_device
+from .enhance import df_features
+from .io import get_resample_params, load_audio, resample, save_audio
+from .model import ModelParams
+from .scripts import dnsmos_dns5 as dnsmos5
+from .scripts.dnsmos import dnsmos_api_req, dnsmos_local, download_onnx_models
+from .sepm import composite as composite_py
+from .utils import as_complex, get_device
 from libdf import DF
 
 HAS_OCTAVE = True

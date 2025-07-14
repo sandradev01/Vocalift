@@ -18,8 +18,8 @@ except ImportError:
     TA_RESAMPLE_SINC = "sinc_interpolation"
     TA_RESAMPLE_KAISER = "kaiser_window"
 
-from df.logger import warn_once
-from df.utils import download_file, get_cache_dir, get_git_root
+from .logger import warn_once
+from .utils import download_file, get_cache_dir, get_git_root
 
 
 def load_audio(

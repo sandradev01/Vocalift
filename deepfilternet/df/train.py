@@ -15,14 +15,14 @@ from torch.autograd.grad_mode import set_grad_enabled
 from torch.nn.utils.clip_grad import clip_grad_norm_
 from torch.types import Number
 
-from df.checkpoint import check_patience, load_model, read_cp, write_cp
-from df.config import Csv, config
-from df.logger import init_logger, log_metrics, log_model_summary
-from df.loss import Istft, Loss
-from df.lr import cosine_scheduler
-from df.model import ModelParams
-from df.modules import get_device
-from df.utils import (
+from .checkpoint import check_patience, load_model, read_cp, write_cp
+from .config import Csv, config
+from .logger import init_logger, log_metrics, log_model_summary
+from .loss import Istft, Loss
+from .lr import cosine_scheduler
+from .model import ModelParams
+from .modules import get_device
+from .utils import (
     as_complex,
     as_real,
     check_finite_module,

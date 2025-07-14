@@ -10,8 +10,8 @@ from torch.nn import init
 from torch.nn.parameter import Parameter
 from typing_extensions import Final
 
-from df.model import ModelParams
-from df.utils import as_complex, as_real, get_device, get_norm_alpha
+from .model import ModelParams
+from .utils import as_complex, as_real, get_device, get_norm_alpha
 from libdf import unit_norm_init
 
 

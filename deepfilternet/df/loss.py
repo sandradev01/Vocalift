@@ -6,12 +6,12 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from df.config import Csv, config
-from df.io import resample
-from df.model import ModelParams
-from df.modules import LocalSnrTarget, Mask, erb_fb
-from df.stoi import stoi
-from df.utils import angle, as_complex, get_device
+from .config import Csv, config
+from .io import resample
+from .model import ModelParams
+from .modules import LocalSnrTarget, Mask, erb_fb
+from .stoi import stoi
+from .utils import angle, as_complex, get_device
 from libdf import DF
 
 

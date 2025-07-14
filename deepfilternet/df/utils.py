@@ -13,8 +13,8 @@ from torch import Tensor
 from torch.autograd import Function
 from torch.types import Number
 
-from df.config import config
-from df.model import ModelParams
+from .config import config
+from .model import ModelParams
 
 
 def get_device():

@@ -8,9 +8,9 @@ import torch
 from loguru import logger
 from torch import nn
 
-from df.config import Csv, config
-from df.model import init_model
-from df.utils import check_finite_module
+from .config import Csv, config
+from .model import init_model
+from .utils import check_finite_module
 from libdf import DF
 
 

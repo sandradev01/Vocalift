@@ -5,9 +5,9 @@ import torch
 from loguru import logger
 from torch import Tensor, nn
 
-import df.multiframe as MF
-from df.config import Csv, DfParams, config
-from df.modules import (
+from .multiframe import MF
+from .config import Csv, DfParams, config
+from .modules import (
     Conv2dNormAct,
     ConvTranspose2dNormAct,
     GroupedLinearEinsum,

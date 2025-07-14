@@ -6,9 +6,9 @@ from loguru import logger
 from torch import Tensor, nn
 
 import df.multiframe as MF
-from df.config import Csv, DfParams, config
-from df.logger import log_deprecated
-from df.modules import (
+from .config import Csv, DfParams, config
+from .logger import log_deprecated
+from .modules import (
     Conv2dNormAct,
     ConvTranspose2dNormAct,
     DfOp,
