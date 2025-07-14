@@ -8,8 +8,8 @@ gunicorn==23.0.0
 numpy==1.26.4
 librosa==0.10.1
 soundfile==0.13.1
-torch==2.3.1+cpu
-torchaudio==2.3.1+cpu
+torch==2.7.1+cpu
+torchaudio==2.7.1+cpu
 loguru==0.7.3
 requests==2.32.4
 certifi==2025.6.15
@@ -26,4 +26,3 @@ pycparser==2.22
 typing_extensions==4.14.0
 appdirs==1.4.4
 sympy==1.14.0
-# Note: python-dotenv can be added if you use .env files for configuration
