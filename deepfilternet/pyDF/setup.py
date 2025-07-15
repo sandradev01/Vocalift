@@ -1,6 +1,17 @@
-#!/usr/bin/env python
+from setuptools import setup
+from setuptools_rust import RustExtension
 
-import setuptools
-
-if __name__ == "__main__":
-    setuptools.setup()
+setup(
+    name="libdf",
+    version="0.1.0",
+    rust_extensions=[
+        RustExtension(
+            "libdf",
+            path="pyDF/Cargo.toml",
+            binding="pyo3",
+            debug=False,
+        )
+    ],
+    packages=["libdf"],
+    zip_safe=False,
+)
