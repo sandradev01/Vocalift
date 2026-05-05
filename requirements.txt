@@ -5,4 +5,4 @@ torchaudio==2.7.1
 numpy==1.24.3
 soundfile==0.12.1
 Werkzeug==2.3.7
-deepfilternet==0.4.0
+deepfilternet==0.5.6

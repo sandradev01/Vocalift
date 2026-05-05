@@ -61,10 +61,15 @@ def get_deepfilter_model():
             if _model is None or _df_state is None or _enhance is None:
                 logger.info("Initializing DeepFilterNet model")
                 install_torch_six_compat()
+                os.environ.setdefault('MASK_ONLY', 'false')
                 from df.enhance import enhance, init_df
 
                 install_deepfilternet_runtime_compat()
-                _model, _df_state, _ = init_df(log_file=None)
+                _model, _df_state, _ = init_df(
+                    config_allow_defaults=True,
+                    log_file=None,
+                    mask_only=False,
+                )
                 _enhance = enhance
                 logger.info("DeepFilterNet model initialized")
 
