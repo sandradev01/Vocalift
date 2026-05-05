@@ -2,7 +2,9 @@ import os
 import io
 import shutil
 import subprocess
+import sys
 import threading
+import types
 import torch
 import torchaudio
 import numpy as np
@@ -11,7 +13,6 @@ from werkzeug.utils import secure_filename
 import tempfile
 import soundfile as sf
 import logging
-from df.enhance import enhance, init_df
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,20 +25,34 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 
 _model = None
 _df_state = None
+_enhance = None
 _model_lock = threading.Lock()
 
 
-def get_deepfilter_model():
-    global _model, _df_state
+def install_torch_six_compat():
+    """Provide the small torch._six API that older DeepFilterNet releases import."""
+    if 'torch._six' not in sys.modules:
+        torch_six = types.ModuleType('torch._six')
+        torch_six.string_classes = (str, bytes)
+        sys.modules['torch._six'] = torch_six
+        torch._six = torch_six
 
-    if _model is None or _df_state is None:
+
+def get_deepfilter_model():
+    global _model, _df_state, _enhance
+
+    if _model is None or _df_state is None or _enhance is None:
         with _model_lock:
-            if _model is None or _df_state is None:
+            if _model is None or _df_state is None or _enhance is None:
                 logger.info("Initializing DeepFilterNet model")
+                install_torch_six_compat()
+                from df.enhance import enhance, init_df
+
                 _model, _df_state, _ = init_df()
+                _enhance = enhance
                 logger.info("DeepFilterNet model initialized")
 
-    return _model, _df_state
+    return _model, _df_state, _enhance
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'wav', 'mp3', 'ogg', 'flac', 'm4a', 'webm'}
@@ -133,7 +148,7 @@ def process_audio():
             elif audio.size(0) > 1:
                 audio = torch.mean(audio, dim=0, keepdim=True)
 
-            model, df_state = get_deepfilter_model()
+            model, df_state, enhance = get_deepfilter_model()
 
             with torch.no_grad():
                 enhanced_audio = enhance(model, df_state, audio)
