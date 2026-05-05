@@ -1,5 +1,8 @@
 import os
 import io
+import shutil
+import subprocess
+import threading
 import torch
 import torchaudio
 import numpy as np
@@ -15,13 +18,26 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024))
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 
-# Initialize DeepFilterNet
-model, df_state, _ = init_df()
-logger.info("DeepFilterNet model initialized")
+_model = None
+_df_state = None
+_model_lock = threading.Lock()
+
+
+def get_deepfilter_model():
+    global _model, _df_state
+
+    if _model is None or _df_state is None:
+        with _model_lock:
+            if _model is None or _df_state is None:
+                logger.info("Initializing DeepFilterNet model")
+                _model, _df_state, _ = init_df()
+                logger.info("DeepFilterNet model initialized")
+
+    return _model, _df_state
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'wav', 'mp3', 'ogg', 'flac', 'm4a', 'webm'}
@@ -33,7 +49,6 @@ def convert_to_wav(input_path, output_path):
     load with torchaudio, convert to mono / 48 kHz and save as WAV.
     Returns True on success, False on failure.
     """
-    import shutil
     try:
         # Short-circuit for regular WAV inputs – this avoids issues with some
         # recorder-generated WAV sub-formats that torchaudio may not parse.
@@ -63,9 +78,12 @@ def convert_to_wav(input_path, output_path):
         # file to the desired mono/48 kHz WAV. This gracefully handles WebM and
         # other browser-recorded formats that torchaudio cannot decode.
         try:
-            import subprocess, shlex
-            cmd = f"ffmpeg -y -i {shlex.quote(input_path)} -ac 1 -ar 48000 {shlex.quote(output_path)}"
-            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(
+                ['ffmpeg', '-y', '-i', input_path, '-ac', '1', '-ar', '48000', output_path],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             logger.info("Converted using ffmpeg fallback")
             return True
         except Exception as ff:
@@ -75,6 +93,12 @@ def convert_to_wav(input_path, output_path):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
 
 @app.route('/process', methods=['POST'])
 def process_audio():
@@ -91,77 +115,51 @@ def process_audio():
     temp_path = None
     try:
         # Save the uploaded file temporarily
-        temp_dir = tempfile.mkdtemp()
-        temp_path = os.path.join(temp_dir, secure_filename(file.filename))
-        file.save(temp_path)
-        
-        # Convert to WAV if needed
-        wav_path = os.path.join(temp_dir, 'input.wav')
-        if not convert_to_wav(temp_path, wav_path):
-            return jsonify({'error': 'Failed to process audio file'}), 500
-        
-        # Process the audio with DeepFilterNet
-        logger.info("Processing audio")
-        
-        # Load the audio
-        # Load the audio
-        audio, sample_rate = torchaudio.load(wav_path)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = os.path.join(temp_dir, secure_filename(file.filename))
+            file.save(temp_path)
 
-        # Ensure mono shape [1, num_samples]
-        if audio.dim() == 1:
-            audio = audio.unsqueeze(0)
-        elif audio.size(0) > 1:
-            audio = torch.mean(audio, dim=0, keepdim=True)
+            # Convert to WAV if needed
+            wav_path = os.path.join(temp_dir, 'input.wav')
+            if not convert_to_wav(temp_path, wav_path):
+                return jsonify({'error': 'Failed to process audio file'}), 500
 
-        # Process with DeepFilterNet
-        with torch.no_grad():
-            enhanced_audio = enhance(model, df_state, audio)
+            logger.info("Processing audio")
+            audio, sample_rate = torchaudio.load(wav_path)
 
-            # Optionally implement strength blending:
-            # enhanced_audio = (1 - strength) * audio + strength * enhanced_audio
+            # Ensure mono shape [1, num_samples]
+            if audio.dim() == 1:
+                audio = audio.unsqueeze(0)
+            elif audio.size(0) > 1:
+                audio = torch.mean(audio, dim=0, keepdim=True)
 
-            # Ensure proper shape for saving
-            if enhanced_audio.dim() == 1:
-                enhanced_audio = enhanced_audio.unsqueeze(0)
+            model, df_state = get_deepfilter_model()
 
-            
-            # Create an in-memory file
-            output = io.BytesIO()
-            
-            # Save as WAV
-            sf.write(output, enhanced_audio.numpy().T, sample_rate, format='WAV')
-            output.seek(0)
-            
-            # Clean up temporary files
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            if os.path.exists(wav_path):
-                os.remove(wav_path)
-            if os.path.exists(temp_dir):
-                os.rmdir(temp_dir)
-            
-            logger.info("Audio processing completed successfully")
-            return send_file(
-                output,
-                mimetype='audio/wav',
-                as_attachment=False,
-                download_name='cleaned_audio.wav'
-            )
+            with torch.no_grad():
+                enhanced_audio = enhance(model, df_state, audio)
+
+                # Ensure proper shape for saving
+                if enhanced_audio.dim() == 1:
+                    enhanced_audio = enhanced_audio.unsqueeze(0)
+
+                output = io.BytesIO()
+                sf.write(output, enhanced_audio.numpy().T, sample_rate, format='WAV')
+                output.seek(0)
+
+                logger.info("Audio processing completed successfully")
+                return send_file(
+                    output,
+                    mimetype='audio/wav',
+                    as_attachment=False,
+                    download_name='cleaned_audio.wav'
+                )
             
     except Exception as e:
         logger.error(f"Error processing audio: {str(e)}", exc_info=True)
-        
-        # Clean up temporary files in case of error
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-        if 'wav_path' in locals() and os.path.exists(wav_path):
-            os.remove(wav_path)
-        if 'temp_dir' in locals() and os.path.exists(temp_dir):
-            os.rmdir(temp_dir)
-            
         return jsonify({'error': f'Failed to process audio: {str(e)}'}), 500
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(debug=True, host='0.0.0.0', port=5001)
-
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug, host='0.0.0.0', port=port)

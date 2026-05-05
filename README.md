@@ -1,90 +1,134 @@
 # Vocalift - Background Noise Remover
 
-Vocalift is a web application that removes background noise from audio files using DeepFilterNet, a state-of-the-art deep learning model for speech enhancement.
+Vocalift is a Flask web app that removes background noise from uploaded or recorded audio using DeepFilterNet.
 
-## Features
+## What Is Included
 
-- 🎤 Record audio directly in the browser
-- 📁 Upload existing audio files
-- 🎚️ Adjustable noise reduction strength
-- 🎧 Side-by-side comparison of original and cleaned audio
-- ⬇️ Download the processed audio
-- 🎨 Modern, responsive user interface
+- Browser audio upload and recording
+- DeepFilterNet speech enhancement
+- WAV download of the cleaned result
+- Production WSGI start command with Gunicorn
+- Docker deployment with `ffmpeg` and `libsndfile`
+- `/health` endpoint for platform health checks
+- Render Blueprint config in `render.yaml`
 
-## Prerequisites
+## Local Development
 
-- Python 3.8 or higher
-- pip (Python package manager)
-- A modern web browser with JavaScript enabled
+1. Create and activate a virtual environment:
 
-## Installation
-
-1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/vocalift.git
-   cd vocalift
+   python3.10 -m venv venv
+   source venv/bin/activate
    ```
 
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. Install dependencies:
 
-3. Install the required packages:
    ```bash
    pip install -r requirements.txt
    ```
 
-   Note: DeepFilterNet requires PyTorch, which may need to be installed separately for your specific system configuration. Visit [PyTorch's official website](https://pytorch.org/get-started/locally/) for installation instructions.
+3. Install `ffmpeg` locally if you want MP3, WebM, M4A, or OGG conversion:
 
-## Usage
-
-1. Start the Flask development server:
    ```bash
-   python app.py
+   brew install ffmpeg
    ```
 
-2. Open your web browser and navigate to:
-   ```
-   http://127.0.0.1:5000
+4. Start the app:
+
+   ```bash
+   python3 app.py
    ```
 
-3. Use the application:
-   - Click "Browse Files" to upload an audio file, or
-   - Click "Record Audio" to record directly from your microphone
-   - Adjust the noise reduction strength using the slider
-   - Click "Process Audio" to clean the audio
-   - Compare the original and cleaned audio
-   - Download the cleaned audio file
+5. Open:
+
+   ```text
+   http://127.0.0.1:5001
+   ```
+
+## Run Locally With Docker
+
+1. Build the image:
+
+   ```bash
+   docker build -t vocalift .
+   ```
+
+2. Run the container:
+
+   ```bash
+   docker run --rm -p 10000:10000 -e SECRET_KEY=local-dev-secret vocalift
+   ```
+
+3. Open:
+
+   ```text
+   http://127.0.0.1:10000
+   ```
+
+## Deploy To Render
+
+This repo is ready for a Docker-based Render Web Service. Docker is recommended because this app needs system packages for audio processing.
+
+1. Push this project to GitHub.
+
+2. In Render, choose **New > Blueprint** if you want Render to use `render.yaml`, or choose **New > Web Service** for manual setup.
+
+3. Connect the GitHub repository.
+
+4. If creating the service manually, use these settings:
+
+   ```text
+   Language: Docker
+   Dockerfile path: ./Dockerfile
+   Health check path: /health
+   ```
+
+5. Add environment variables:
+
+   ```text
+   SECRET_KEY=<generate a long random value>
+   WEB_CONCURRENCY=1
+   MAX_CONTENT_LENGTH=52428800
+   ```
+
+6. Deploy. The first deploy can take several minutes because PyTorch and DeepFilterNet are large dependencies.
+
+7. After deployment, open the Render URL and test with a short WAV file first.
+
+## Deploy To Any Docker Host
+
+Use this option for Fly.io, Railway, a VPS, or another container platform.
+
+1. Build the image:
+
+   ```bash
+   docker build -t vocalift .
+   ```
+
+2. Run it with a platform-provided `PORT`:
+
+   ```bash
+   docker run --rm -p 10000:10000 \
+     -e PORT=10000 \
+     -e SECRET_KEY="$(openssl rand -hex 32)" \
+     -e WEB_CONCURRENCY=1 \
+     vocalift
+   ```
+
+3. Configure your platform health check to:
+
+   ```text
+   /health
+   ```
+
+## Notes For Production
+
+- Keep `WEB_CONCURRENCY=1` unless you have enough RAM for multiple DeepFilterNet model copies.
+- Use short audio files on small instances. Long audio files are CPU and memory intensive.
+- Increase `MAX_CONTENT_LENGTH` only if your hosting plan has enough memory and request timeout headroom.
+- Do not commit generated files in `uploads/`, `outputs/`, or `deepfilternet/target/`.
 
 ## Supported Audio Formats
 
-- Input: WAV, MP3, OGG, FLAC, M4A
-- Output: WAV (16kHz, mono)
-
-## How It Works
-
-Vocalift uses DeepFilterNet, a deep learning model specifically designed for speech enhancement. The model works by:
-
-1. Analyzing the audio spectrogram to separate speech from noise
-2. Applying a complex spectral mapping to enhance speech components
-3. Reconstructing the time-domain signal with reduced background noise
-
-The noise reduction strength parameter controls how aggressively the model removes background sounds, allowing you to find the right balance between noise reduction and audio quality.
-
-## Troubleshooting
-
-- **Slow processing**: Audio processing is computationally intensive. For longer recordings, please be patient.
-- **Audio quality issues**: Try adjusting the noise reduction strength. Higher values remove more noise but may affect speech quality.
-- **Browser issues**: Ensure you're using a modern browser with Web Audio API support (Chrome, Firefox, Safari, or Edge).
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [DeepFilterNet](https://github.com/Rikorose/DeepFilterNet) - For the powerful speech enhancement model
-- [Flask](https://flask.palletsprojects.com/) - For the web framework
-- [Font Awesome](https://fontawesome.com/) - For the icons
+- Input: WAV, MP3, OGG, FLAC, M4A, WebM
+- Output: WAV

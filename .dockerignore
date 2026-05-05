@@ -1,0 +1,15 @@
+.git
+.gitignore
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+ENV/
+.env
+uploads/
+outputs/
+*.log
+*.tmp
+deepfilternet/target/
