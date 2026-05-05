@@ -5,13 +5,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=10000 \
     WEB_CONCURRENCY=1 \
+    XDG_CACHE_HOME=/tmp/.cache \
     OMP_NUM_THREADS=1 \
     MKL_NUM_THREADS=1
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg libsndfile1 curl \
+    && apt-get install -y --no-install-recommends ffmpeg git libsndfile1 curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

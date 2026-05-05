@@ -38,6 +38,21 @@ def install_torch_six_compat():
         torch._six = torch_six
 
 
+def install_deepfilternet_runtime_compat():
+    """Make DeepFilterNet tolerate slim containers without git installed."""
+    try:
+        import df.logger
+        import df.utils
+    except ImportError:
+        return
+
+    df.utils.get_git_root = lambda: None
+    df.utils.get_commit_hash = lambda: None
+    df.utils.get_branch_name = lambda: None
+    df.logger.get_commit_hash = lambda: None
+    df.logger.get_branch_name = lambda: None
+
+
 def get_deepfilter_model():
     global _model, _df_state, _enhance
 
@@ -48,7 +63,8 @@ def get_deepfilter_model():
                 install_torch_six_compat()
                 from df.enhance import enhance, init_df
 
-                _model, _df_state, _ = init_df()
+                install_deepfilternet_runtime_compat()
+                _model, _df_state, _ = init_df(log_file=None)
                 _enhance = enhance
                 logger.info("DeepFilterNet model initialized")
 
