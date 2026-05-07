@@ -8,17 +8,28 @@ import types
 import torch
 import torchaudio
 import numpy as np
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 import tempfile
 import soundfile as sf
 import logging
+from flask_cors import CORS
+from flask import Flask, request, send_file
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://vocalift-frontend.pages.dev/"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024))
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
