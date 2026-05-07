@@ -11,3 +11,5 @@ services:
         value: "1"
       - key: MAX_CONTENT_LENGTH
         value: "52428800"
+      - key: FRONTEND_ORIGINS
+        value: "https://vocalift-frontend.pages.dev"

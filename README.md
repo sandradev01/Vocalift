@@ -7,10 +7,79 @@ Vocalift is a Flask web app that removes background noise from uploaded or recor
 - Browser audio upload and recording
 - DeepFilterNet speech enhancement
 - WAV download of the cleaned result
+- Backend API endpoints for frontend integration
+- Configurable CORS via `FRONTEND_ORIGINS`
 - Production WSGI start command with Gunicorn
 - Docker deployment with `ffmpeg` and `libsndfile`
 - `/health` endpoint for platform health checks
 - Render Blueprint config in `render.yaml`
+
+## Backend API
+
+The existing UI is still served at `/`. Frontends should use the API endpoints below.
+
+### Health Check
+
+```http
+GET /api/health
+```
+
+Response:
+
+```json
+{
+  "status": "ok",
+  "service": "vocalift-backend"
+}
+```
+
+### API Metadata
+
+```http
+GET /api
+```
+
+Returns the supported upload field, formats, max upload size, and endpoint paths.
+
+### Process Audio
+
+```http
+POST /api/process
+Content-Type: multipart/form-data
+```
+
+Form field:
+
+```text
+audio=<audio file>
+```
+
+Successful response:
+
+```text
+Content-Type: audio/wav
+```
+
+Example frontend request:
+
+```js
+const formData = new FormData();
+formData.append("audio", file);
+
+const response = await fetch(`${API_BASE_URL}/api/process`, {
+  method: "POST",
+  body: formData,
+});
+
+if (!response.ok) {
+  const error = await response.json().catch(() => ({}));
+  throw new Error(error.error || "Failed to process audio");
+}
+
+const cleanedAudioBlob = await response.blob();
+```
+
+The legacy `/process` route remains available for the included UI.
 
 ## Local Development
 
@@ -89,6 +158,13 @@ This repo is ready for a Docker-based Render Web Service. Docker is recommended 
    SECRET_KEY=<generate a long random value>
    WEB_CONCURRENCY=1
    MAX_CONTENT_LENGTH=52428800
+   FRONTEND_ORIGINS=https://your-frontend.example.com
+   ```
+
+   Use a comma-separated list for multiple frontend origins:
+
+   ```text
+   FRONTEND_ORIGINS=https://app.example.com,http://localhost:3000
    ```
 
 6. Deploy. The first deploy can take several minutes because PyTorch and DeepFilterNet are large dependencies.
@@ -124,6 +200,7 @@ Use this option for Fly.io, Railway, a VPS, or another container platform.
 ## Notes For Production
 
 - Keep `WEB_CONCURRENCY=1` unless you have enough RAM for multiple DeepFilterNet model copies.
+- Set `FRONTEND_ORIGINS` to the exact frontend origins that will call this backend. Do not include paths.
 - Use short audio files on small instances. Long audio files are CPU and memory intensive.
 - Increase `MAX_CONTENT_LENGTH` only if your hosting plan has enough memory and request timeout headroom.
 - Do not commit generated files in `uploads/`, `outputs/`, or `deepfilternet/target/`.
